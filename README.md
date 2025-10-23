@@ -57,5 +57,27 @@ App: http://localhost:8080/
 
 You’ll see the simple HTML page with “Add Card” and “Search” modals.
 
+# Database Structure
 
+For this project I’m using a single-table design:
+
+Table: cards
+
+Columns:
+
+card_number – mandatory and unique (ensures the same card isn’t stored twice)
+
+cardholder_name – mandatory
+
+created_at – timestamp, unique, records when the card was added
+
+Cardholder-to-card relation: one cardholder can have multiple cards.
+
+DDL (example):
+
+CREATE TABLE cards (
+  card_number    VARCHAR(19) NOT NULL UNIQUE,
+  cardholder_name VARCHAR(100) NOT NULL,
+  created_at      TIMESTAMP NOT NULL UNIQUE
+);
 
