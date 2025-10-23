@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Card Vault (Frontend Only)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root { --bg:#f6f7fb; --fg:#222; --accent:#4caf50; --muted:#999; }
+    body { font-family: system-ui, Arial, sans-serif; background: var(--bg); color: var(--fg); margin: 40px; }
+    h1 { margin: 0 0 16px; }
+    .actions { display: flex; gap: 8px; margin: 12px 0 24px; }
+    button { padding: 10px 16px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; }
+    button.secondary { background: #3f51b5; }
+    button.ghost { background: #eee; color: #333; }
+    button:hover { filter: brightness(0.95); }
+
+    /* Modal */
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; padding: 16px; }
+    .modal.open { display: flex; }
+    .card { background: #fff; width: 100%; max-width: 420px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.12); }
+    .card header { display:flex; align-items:center; justify-content:space-between; padding: 14px 16px; border-bottom: 1px solid #eee; }
+    .card header h3 { margin:0; font-size: 18px; }
+    .card .body { padding: 16px; }
+    .close { background: transparent; color: var(--muted); }
+
+    label { display:block; font-size: 14px; margin: 12px 16px 6px; }
+    input[type=text], input[type=password] { width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 8px; margin: 0px 0px 0px}
+    .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 14px; }
+    th { text-align: left; background: #fafafa; }
+    .empty { color: var(--muted); font-style: italic; margin-top: 8px; }
+    .inline { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+    .inline-label { user-select: none; font-size: 14px; color: #444; }
+
+    .toast { margin-top: 8px; font-size: 14px; }
+    .ok { color: #0a7a2d; }
+    .err { color: #b00020; }
+  </style>
+</head>
+<body>
+  <h1>Card Vault</h1>
+  <div class="actions">
+    <button id="addBtn">Add Card</button>
+    <button id="searchBtn" class="secondary">Search by Last 4</button>
+  </div>
+
+  <!-- Quick view of saved cards -->
+  <div id="quickWrap">
+    <h3>Saved Cards (Local)</h3>
+    <div id="emptyQuick" class="empty">No cards yet. Add one!</div>
+    <table id="quickTable" style="display:none;">
+      <thead><tr><th>Name</th><th>Masked PAN</th><th>Created</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Add Modal -->
+  <div class="modal" id="addModal" aria-hidden="true">
+    <div class="card" role="dialog" aria-modal="true">
+      <header>
+        <h3>Add Card</h3>
+        <button class="close" id="closeAdd" aria-label="Close">✕</button>
+      </header>
+      <div class="body">
+        <form id="addForm" autocomplete="off">
+          <label for="name">Cardholder Name</label>
+          <input id="name" type="text" required placeholder="Ada Lovelace" />
+          <label for="pan">Card Number (PAN)</label>
+          <input id="pan" type="password" required minlength="12" maxlength="19" inputmode="numeric" placeholder="16 digits" />
+          <div class="inline">
+          <input type="checkbox" id="showPan" />
+          <label for="showPan" class="inline-label">Show PAN</label>
+        </div>
+
+
+          <div class="hint">Digits only, 12–19 long. PAN is not saved; only last4 + masked are kept.</div>
+          <div class="actions" style="margin-top:14px;">
+            <button type="submit">Save</button>
+            <button type="button" class="ghost" id="cancelAdd">Cancel</button>
+          </div>
+        </form>
+        <div id="addToast" class="toast"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Modal -->
+  <div class="modal" id="searchModal" aria-hidden="true">
+    <div class="card" role="dialog" aria-modal="true">
+      <header>
+        <h3>Search Cards</h3>
+        <button class="close" id="closeSearch" aria-label="Close">✕</button>
+      </header>
+      <div class="body">
+        <form id="searchForm" autocomplete="off">
+          <label for="last4">Last 4 Digits</label>
+          <input id="last4" type="text" required inputmode="numeric" pattern="\d{4}" placeholder="1234" maxlength="4" />
+          <div class="actions" style="margin-top:14px;">
+            <button type="submit">Search</button>
+            <button type="button" class="ghost" id="cancelSearch">Cancel</button>
+          </div>
+        </form>
+
+        <table id="resultsTable" style="display:none; margin-top:12px;">
+          <thead><tr><th>Name</th><th>Masked PAN</th><th>Created</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div id="emptyResults" class="empty" style="display:none;">No matches for that last-4.</div>
+      </div>
+    </div>
+  </div>
+  <script>
+  // Base URL (same origin because index.html is served by Spring Boot)
+  const API_BASE = "";
+
+  // ---- Modal wiring (unchanged) ----
+  const addModal = document.getElementById("addModal");
+  const searchModal = document.getElementById("searchModal");
+
+  document.getElementById("addBtn").onclick    = () => openModal(addModal);
+  document.getElementById("searchBtn").onclick = () => openModal(searchModal);
+  document.getElementById("closeAdd").onclick    = () => closeModal(addModal);
+  document.getElementById("closeSearch").onclick = () => closeModal(searchModal);
+  document.getElementById("cancelAdd").onclick    = () => closeModal(addModal);
+  document.getElementById("cancelSearch").onclick = () => closeModal(searchModal);
+  window.addEventListener("click", (e) => {
+    if (e.target === addModal) closeModal(addModal);
+    if (e.target === searchModal) closeModal(searchModal);
+  });
+
+  function openModal(el){ el.classList.add("open"); el.setAttribute("aria-hidden","false"); }
+  function closeModal(el){ el.classList.remove("open"); el.setAttribute("aria-hidden","true"); }
+
+  // ---- Add Card → POST /api/cards ----
+  const addForm  = document.getElementById("addForm");
+  const addToast = document.getElementById("addToast");
+
+  addForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const cardholderName = document.getElementById("name").value.trim();
+    const pan = document.getElementById("pan").value.trim();
+
+    if (!/^\d{12,19}$/.test(pan)) {
+      showToast(addToast, "PAN must be 12–19 digits.", false);
+      return;
+    }
+
+    try {
+      const resp = await fetch(`${API_BASE}/api/cards`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cardholderName, pan })
+      });
+
+      const data = await resp.json().catch(() => ({}));
+
+      if (!resp.ok) {
+        showToast(addToast, data.error || "Failed to add card.", false);
+        return;
+      }
+
+      // Success: backend returns maskedPan & createdTime
+      showToast(addToast, `Saved ${data.cardholderName} (${data.maskedPan})`, true);
+      addForm.reset();
+    } catch (err) {
+      showToast(addToast, "Network error. Is the backend running on :8080?", false);
+    }
+  });
+
+  // ---- Search → GET /api/cards?last4=XXXX ----
+  const searchForm    = document.getElementById("searchForm");
+  const resultsTable  = document.getElementById("resultsTable");
+  const resultsBody   = resultsTable.querySelector("tbody");
+  const emptyResults  = document.getElementById("emptyResults");
+
+  searchForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const last4 = document.getElementById("last4").value.trim();
+    if (!/^\d{4}$/.test(last4)) return;
+
+    try {
+      const resp = await fetch(`${API_BASE}/api/cards?last4=${encodeURIComponent(last4)}`);
+      const data = await resp.json();
+
+      resultsBody.innerHTML = "";
+
+      if (!resp.ok) {
+        resultsTable.style.display = "none";
+        emptyResults.textContent = data.error || "Search failed.";
+        emptyResults.style.display = "block";
+        return;
+      }
+
+      if (!Array.isArray(data) || data.length === 0) {
+        resultsTable.style.display = "none";
+        emptyResults.textContent = "No matches for that last-4.";
+        emptyResults.style.display = "block";
+        return;
+      }
+
+      emptyResults.style.display = "none";
+      resultsTable.style.display = "table";
+
+      data.forEach(row => {
+        const created = safeDate(row.createdTime);
+        const tr = `
+          <tr>
+            <td>${escapeHtml(row.cardholderName)}</td>
+            <td>${escapeHtml(row.maskedPan)}</td>
+            <td>${created}</td>
+          </tr>`;
+        resultsBody.insertAdjacentHTML("beforeend", tr);
+      });
+    } catch {
+      resultsTable.style.display = "none";
+      emptyResults.textContent = "Network error. Is the backend running?";
+      emptyResults.style.display = "block";
+    }
+  });
+
+  // ---- Utils ----
+  function showToast(el, msg, ok) {
+    el.textContent = msg;
+    el.className = "toast " + (ok ? "ok" : "err");
+  }
+  function escapeHtml(s){ return String(s || "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
+  function safeDate(iso){ try { return new Date(iso).toLocaleString(); } catch { return iso || ""; } }
+
+  // Optional: Hide the “Saved Cards (Local)” section since we’re not using localStorage anymore
+  const quickWrap = document.getElementById("quickWrap");
+  if (quickWrap) quickWrap.style.display = "none";
+
+  const panInput = document.getElementById("pan");
+  const showPan = document.getElementById("showPan");
+
+  showPan.addEventListener("change", () => {
+    panInput.type = showPan.checked ? "text" : "password";
+  });
+</script>
+
+</body>
+</html>
