@@ -31,9 +31,9 @@ A minimal Java/Spring Boot app to add and search cardholder records securely.
 
 - Maven
 
-How To Run:
-
-#Prereqs
+# How To Run:
+-----------------------------------
+# Prereqs
 
 Java 17+ (21 recommended) → java -version
 
