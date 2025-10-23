@@ -33,25 +33,25 @@ Maven
 
 How To Run:
 
-0) Prereqs
+#Prereqs
 
 Java 17+ (21 recommended) → java -version
 
 Maven → mvn -v
 
-(Optional) Git if you’re cloning → git --version
+Git if you’re cloning → git --version
 
-1) Get the code
+# 1) Get the code
 git clone https://github.com/<you>/CodingAssessmentNeurocom.git
 cd CodingAssessmentNeurocom
 
-2) Run the app
+# 2) Run the app
 mvn spring-boot:run
 
 
 You should see logs like: Tomcat started on port(s): 8080.
 
-3) Open the UI
+# 3) Open the UI
 
 App: http://localhost:8080/
 
