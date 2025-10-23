@@ -1,4 +1,4 @@
-Card Vault Card Vault
+# Card Vault 
 A minimal Java/Spring Boot app to add and search cardholder records securely.
 
 - Stores card numbers and encrypted
@@ -9,7 +9,7 @@ A minimal Java/Spring Boot app to add and search cardholder records securely.
 
 - Uses H2 database
 
-Features
+# Features
 
 - Add card: cardholderName + PAN
 
@@ -21,15 +21,15 @@ Features
 
 - One-file frontend with “Add” & “Search” popups
 
-Tech Stack
+# Tech Stack
 
-Java 17+ (or 21)
+- Java 17+ (or 21)
 
-Spring Boot 3.5.6
+- Spring Boot 3.5.6
 
-H2 
+- H2 
 
-Maven
+- Maven
 
 How To Run:
 
